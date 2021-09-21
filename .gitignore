@@ -1,0 +1,9 @@
+*.csv
+*.json
+*.7z
+
+data/
+
+.DS_Store
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
