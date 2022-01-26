@@ -1,0 +1,25 @@
+# SETTINGS FILE
+## General settings 
+input:
+  folder: data
+  fname: clean_transactions.csv
+output_folder: output
+models: 
+- rnn
+- arima
+- sarima
+aggregation: day # one of [None, 'hour','day','month'] If none, aggregation time is 15 minutes
+train_date: 
+  year: 2018
+  month: 8
+  day: 1
+
+  # Seelct a number of stations to run simulation 
+number_of_stations: 20
+
+## CNN Settings 
+cnn:
+  steps_back: 14
+  steps_future: 7 
+  batch_size: 128
+
