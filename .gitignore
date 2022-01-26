@@ -1,6 +1,8 @@
 *.csv
 *.json
 *.7z
+*.pkl
+*.pyc
 
 data/
 
