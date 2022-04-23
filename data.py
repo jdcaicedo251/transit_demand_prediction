@@ -3,6 +3,7 @@ import numpy as np
 import os 
 import unicodedata
 import tensorflow as tf
+import holidays_co
 
 from utils import read_yaml
 
@@ -36,26 +37,60 @@ def read_data(settings):
     input_path = settings['input']
     path = os.path.join(input_path['folder'], input_path['fname'])
     df = pd.read_csv(path, parse_dates = ['timestamp'])
+    
+    #Clean dataset
     df.columns = [strip_accents(col) for col in df.columns]
-    # end = time.time()
-    # print('Elapsed time is {}'.format(end-start))
-    return df 
-
-def preprocess_data(settings):
-    df = read_data(settings)
-    # Time variables
-    df['year'] = df.timestamp.dt.year
-    df['month'] = df.timestamp.dt.month
-    df['day'] = df.timestamp.dt.day
-    df['hour'] = df.timestamp.dt.hour
-    df['dayofweek'] = df.timestamp.dt.dayofweek 
-    df['weekday'] = (df.dayofweek <= 4).astype(int)
-
-    # Cleaning operation times 
-    df = df[~df.hour.isin([0,1,2,3,23])]
+    stations = df.columns[df.columns.str.contains("\(")]
+    df = df.groupby('timestamp')[stations].sum()
+    df = df[df.index <= pd.Timestamp('2021-04-30 23:45:00')]
+    # hour = df.index.hour
+    # df = df[~hour.isin([0,1,2,3,23])]   
+    ## There are some duplicate 15-mins intervals that need to be sum up. 
     return df
 
-def aggreagtion(df, aggregation = None):
+def add_cycles(df, aggregation = 'day'):
+    timestamp_s = df.index.map(pd.Timestamp.timestamp)
+    day = 24 * 60 * 60
+    week = day * 7
+    year = day * 365.2524
+
+    df['year_sin'] = np.sin(timestamp_s * (2 * np.pi / year))
+    df['year_cos'] = np.cos(timestamp_s * (2 * np.pi / year))
+    df['week_sin'] = np.sin(timestamp_s * (2 * np.pi / week))
+    df['week_cos'] = np.cos(timestamp_s * (2 * np.pi / week))
+    
+    if aggregation == 'day':
+        return df 
+    else: 
+        df['day_sin'] = np.sin(timestamp_s * (2 * np.pi / day))
+        df['day_cos'] = np.cos(timestamp_s * (2 * np.pi / day))
+        return df
+
+def add_holidays(df):
+    #Holidays Information
+    years = range(2015,2022)
+    holidays = []
+    for year in years: 
+        year_holidays = holidays_co.get_colombia_holidays_by_year(year)
+        for day in year_holidays:
+            holidays.append(day.date)
+
+    holidays = pd.Series(pd.to_datetime(holidays))
+
+    # Holidays
+    time_ = df.index.normalize()
+    sundays = pd.Series((df.index.weekday == 6).astype(int))
+    df_holidays = time_.isin(holidays)
+    final_holidays = sundays.mask(df_holidays, 1)
+    return final_holidays.values
+
+def temporal_variables(df, aggregation = 'day'):
+    add_cycles(df, aggregation)
+    df['holiday'] = add_holidays(df)
+    df['saturday'] = pd.Series((df.index.weekday == 5).astype(int)).values
+    return df
+
+def aggreagtion_func(df, aggregation = '15-mins'):
     """
     Aggregates transactions by the given aggregation parameter. 
     
@@ -63,60 +98,54 @@ def aggreagtion(df, aggregation = None):
     -----------
     - df: Pandas DataFrame, 
         Transactions by station. 
-    - aggregation: str, default = None. 
-        Aggregation interval. If none, it returns transactions every 15 mins. 
-        One of ['hour','day','month']
+    - aggregation: str, default = '15-mins'. 
+        Aggregation interval {'15-mins','hour','day','month'}
     """
-    # stations = set(df.columns) - set(['day', 'hour', 'weekday', 'year', 'month', 'dayofweek', 'time'])
-    stations = df.columns.str.contains("\(")
-    stations = df.columns[stations]
 
-    if aggregation is None:
-        return df.reset_index(drop = True) # Why drop index? 
-
-    if aggregation == 'hour':
-        groupby_list = ['year', 'month', 'day', 'dayofweek','weekday', 'hour']
+    if aggregation == '15-mins': 
+        hour = df.index.hour
+        df = df[~hour.isin([0,1,2,3,23])]   
+        return df 
+    
+    elif aggregation == 'hour':
+        hours = df.resample('H').sum()
+        hour = hours.index.hour
+        return hours[~hour.isin([0,1,2,3,23])] 
+    
     elif aggregation == 'day':
-        groupby_list = ['year', 'month', 'day', 'dayofweek','weekday']
-        df.drop(columns = ['hour'], inplace = True)
-    elif aggregation == 'month':
-        groupby_list = ['year', 'month']
-        df.drop(columns = ['hour', 'day'], inplace = True)
+        hour = df.index.hour
+        df = df[~hour.isin([0,1,2,3,23])]  
+        return df.resample('D').sum()
+
     else:
-        raise ValueError ('parameter {} not understood. Aggregation one of [None, hour, day, month]'.format(aggregation))
+        raise ValueError ('parameter {} not understood. Aggregation one of {15-mins,hour,day,month}'.format(aggregation))
 
-    #Groupby 
-    # df1 = df.groupby(groupby_list).sum().reset_index() #Why dobble reset indexing? 
-    # df1 = df1.reset_index(drop = True)
+def train_index(df, train_date):
 
-    #Data transformation (this should be last - after aggregating data)
-    # Notice that this transformation is no longer available. Add it as an argument if I want to reveser this
-    # if transformation == 'log':
-    #     df1[stations] = df1[stations].transform(np.log1p)
-    return df.groupby(groupby_list).sum().reset_index()
+    try:
+        date = pd.Timestamp(train_date)
+        idx = df.index.get_loc(date)
+
+    except KeyError: 
+        date = pd.Timestamp(train_date) + pd.DateOffset(hours=4)
+        idx= df.index.get_loc(date)
+
+    return idx
+
 
 def train_test_data(settings):         
     aggregation = settings['aggregation']
     train_date = settings['train_date']
-    train_date = (train_date['year'], train_date['month'], train_date['day'])
 
-    df = preprocess_data(settings)
-    df = aggreagtion(df, aggregation = aggregation)
+    df = read_data(settings)
+    df = aggreagtion_func(df, aggregation = aggregation)
+    df = temporal_variables(df, aggregation = aggregation)
+    
+    idx = train_index(df, train_date)
 
-    if aggregation == 'month':
-        train_index = df[(df.year == train_date[0]) & (df.month == train_date[1])].index[0]
-
-    else: 
-        train_index = df[(df.year == train_date[0]) & (df.month == train_date[1]) & (df.day == train_date[2])].index[0]
-
-    train = df[:train_index]
-    test = df[train_index:]
-
-    stations = train.columns.str.contains("\(")
-    stations = train.columns[stations]
-
+    train = df[:idx]
+    test = df[idx:]
     return train, test
-
 
 def tf_dataframe(settings, train, test):
     '''
@@ -171,6 +200,8 @@ def tf_dataframe(settings, train, test):
 
 
 def normalize(train, test):
+    train_copy = train.copy(deep = True)
+    test_copy = test.copy(deep = True)
 
     assert train.name == test.name 
     name = train.name
@@ -184,13 +215,102 @@ def normalize(train, test):
     test_time_series = test[name]
     normalize_test_time_series = (test_time_series - mean_train)/(std_train)
 
-    train[name] = normalize_train_time_series
-    test[name] = normalize_test_time_series
+    train_copy[name] = normalize_train_time_series
+    test_copy[name] = normalize_test_time_series
 
-    return train, test, mean_train, std_train
+    return train_copy, test_copy, mean_train, std_train
 
 def unnormalize_predict(normalized_prediction, train_mean, train_std):
     return (normalized_prediction * train_std) + train_mean
+
+
+class WindowGenerator():
+  def __init__(self, input_width, label_width, shift,
+               data, label_columns=None, train_date='2018-08-01', 
+               val_date=None, batch_size=32):
+    # Store the raw data.
+    self.batch_size = batch_size
+    self.input_width = input_width
+    self.label_width = label_width
+    self.shift = shift
+
+    idx = train_index(data, train_date) #data.index.get_loc(train_date)
+    self.train_df = data.iloc[:idx + 1]
+    self.test_df = data.iloc[idx - input_width:]
+
+    # Work out the label column indices.
+    self.label_columns = label_columns
+    if label_columns is not None:
+      self.label_columns_indices = {name: i for i, name in
+                                    enumerate(label_columns)}
+    self.column_indices = {name: i for i, name in
+                           enumerate(data.columns)}
+
+    # Work out the window parameters.
+    self.total_window_size = input_width + shift
+
+    self.input_slice = slice(0, input_width)
+    self.input_indices = np.arange(self.total_window_size)[self.input_slice]
+
+    self.label_start = self.total_window_size - self.label_width
+    self.labels_slice = slice(self.label_start, None)
+    self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
+
+  def __repr__(self):
+    return '\n'.join([
+        f'Total window size: {self.total_window_size}',
+        f'Input indices: {self.input_indices}',
+        f'Label indices: {self.label_indices}',
+        f'Label column name(s): {self.label_columns}'])
+
+def split_window(self, features):
+  inputs = features[:, self.input_slice, :]
+  labels = features[:, self.labels_slice, :]
+  if self.label_columns is not None:
+    labels = tf.stack(
+        [labels[:, :, self.column_indices[name]] for name in self.label_columns],
+        axis=-1)
+
+  # Slicing doesn't preserve static shape information, so set the shapes
+  # manually. This way the `tf.data.Datasets` are easier to inspect.
+  inputs.set_shape([None, self.input_width, None])
+  labels.set_shape([None, self.label_width, None])
+
+  return inputs, labels
+
+WindowGenerator.split_window = split_window
+
+def make_dataset(self, data):
+  data = np.array(data, dtype=np.float32)
+  ds = tf.keras.utils.timeseries_dataset_from_array(
+      data=data,
+      targets=None,
+      sequence_length=self.total_window_size,
+      sequence_stride=1,
+      shuffle=False, 
+      batch_size= self.batch_size)
+
+  ds = ds.map(self.split_window)
+
+  return ds
+
+WindowGenerator.make_dataset = make_dataset
+
+@property
+def train(self):
+  return self.make_dataset(self.train_df)
+
+# @property
+# def val(self):
+#   return self.make_dataset(self.val_df)
+
+@property
+def test(self):
+  return self.make_dataset(self.test_df)
+
+WindowGenerator.train = train
+# WindowGenerator.val = val
+WindowGenerator.test = test
 
 # Unit Test
 # settings = read_settings()
