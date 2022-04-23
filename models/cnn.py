@@ -1,5 +1,8 @@
+
 from tabnanny import verbose
+import os
 import tensorflow as tf
+os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 # import time
 
 from data import unnormalize_predict
