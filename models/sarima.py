@@ -37,6 +37,7 @@ class sarimaClass():
         #Model estimation
         time_series = train[self.station_name]
         exogenous_variables = train.drop([self.station_name], axis=1)
+        
 
 
         sarima_model = pm.auto_arima(y = time_series, x = exogenous_variables , 
@@ -59,7 +60,7 @@ class sarimaClass():
     
     def predict(self, test, train_mean, train_std):
         t = TicToc()
-
+        t.tic()
         model = self.fitted_model
         cols = list(set(test.columns) -set([self.station_name]))
         
@@ -67,9 +68,9 @@ class sarimaClass():
         for index, row in test.iterrows():
             y = row[self.station_name]
             x = row[cols].values
-
             prediction = model.predict(n_periods = self.forecast_window, X = x)
             prediction_list.append(prediction)
+            
             model.update(y, x, maxiter=5) # Update time series with actual value for next prediction
 
         normalized_prediction = np.array(prediction_list)

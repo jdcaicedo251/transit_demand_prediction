@@ -283,7 +283,7 @@ for station in stations:
                     t.tic()
                     # logging.info('Static estimation and prediction...') 
                     predictions, time_ = run_static_model(model, train_station, test_station)
-                    print(time_)
+                    # print(time_)
                     predictions = predictions.reshape(-1,OUT_STEPS)
                     predictions = prediction_dict(station, predictions, time_)
                     save_json(station_path, predictions)
