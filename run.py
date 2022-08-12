@@ -22,7 +22,7 @@ logging.basicConfig(
     stream=sys.stdout, level=logging.INFO,
     format='%(asctime)s %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+# logger.setLevel(logging.INFO)
 
 
 ###########################
@@ -333,6 +333,12 @@ if __name__ == '__main__':
     multioutput = settings['multioutput']
     output = settings['output']
     batch_size = settings['batch_size']
+
+    logger.info("Initilize Time Series Experiments")
+    logger.info("Model: {}".format(model))
+    logger.info("Aggregation: {}".format(aggregation))
+    logger.info("Training: {}".format(training))
+    logger.info("Output: {}".format(output))
     
     to_drop_stations = ['(40000) cable portal tunal',
                         '(40001) juan pablo ii',
@@ -344,18 +350,13 @@ if __name__ == '__main__':
     test = test.drop(columns= to_drop_stations)
     exog_vars = list(set(train.columns[~train.columns.str.contains("\(")]))
     list_stations = list(train.columns[train.columns.str.contains("\(")])
-    
-    logging.INFO("Model: {}".format(model))
-    logging.INFO("Aggregation: {}".format(aggregation))
-    logging.INFO("Training: {}".format(training))
-    logging.INFO("Output: {}".format(output))
 
     if multioutput:
         stations = list_stations
-        logging.INFO('Input Stations: {}'.format(len(stations)))
+        logger.info('Input Stations: {}'.format(len(stations)))
     else: 
         stations = settings['stations']
-        logging.INFO('Input Station: {}'.format(stations))
+        logger.info('Input Station: {}'.format(stations))
         
     results_path = path = os.path.join(output_folder,
                                        aggregation,
@@ -368,17 +369,18 @@ if __name__ == '__main__':
     time_= TicToc()
 
     if online: 
-        logging.INFO('Running in Online Mode')
+        logger.info('Running in Online Mode')
         time_.tic()
         result, e_time, s_time = online_estimation(model, stations, test_limit = test_limit)
         time_.toc("Model estimation and simulation in {}".format(time_.tocvalue()))
     else: 
-        logging.INFO('Running in Static Mode')
+        logger.info('Running in Static Mode')
         time_.tic()
         result, e_time, s_time = static_estimation(model, stations, test_limit = test_limit)
         time_.toc("Model estimation and simulation in {}".format(time_.tocvalue()))
         
     #Save results
+    logger.info("saving results")
     for station, prediction in zip(stations, result):
         p_dict = prediction_dict(station, prediction, e_time, s_time)
         path = os.path.join(results_path, station + '.json')
