@@ -227,7 +227,6 @@ def static_estimation(model, stations, test_limit=None):
 
         results = unnormalize_min_max(results, _min, _max)
         results = np.expand_dims(results, axis=0)
-        print(results.shape)
         return results, estimation_time, simulation_time
     elif model == 'sarima':
         model_class = sarimaClass(settings, stations[0])
@@ -242,6 +241,7 @@ def static_estimation(model, stations, test_limit=None):
         simulation_time = t.tocvalue(restart=False)
         
         results = unnormalize_min_max(results, _min, _max)
+        results = np.expand_dims(results, axis=0)
         return results, estimation_time, simulation_time
     
     t = TicToc()
