@@ -41,8 +41,10 @@ class TicToc(object):
         self.end     = default_timer()
         self.elapsed = self.end - self.start
         # print('%s %f seconds.' % (msg, self.elapsed))
-        
-        logging.info("{} {} seconds".format(msg, self.elapsed))
+        if self.elapsed > 60:
+            logging.info("{} {:.2f} minutes".format(msg, self.elapsed/60))
+        else:
+            logging.info("{} {:.2f} segundos".format(msg, self.elapsed))
         if restart:
             self.start = default_timer()
         

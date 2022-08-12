@@ -372,12 +372,12 @@ if __name__ == '__main__':
         logger.info('Running in Online Mode')
         time_.tic()
         result, e_time, s_time = online_estimation(model, stations, test_limit = test_limit)
-        time_.toc("Model estimation and simulation in {}".format(time_.tocvalue()))
+        time_.toc("Model estimation and simulation in ")
     else: 
         logger.info('Running in Static Mode')
         time_.tic()
         result, e_time, s_time = static_estimation(model, stations, test_limit = test_limit)
-        time_.toc("Model estimation and simulation in {}".format(time_.tocvalue()))
+        time_.toc("Model estimation and simulation in ")
         
     #Save results
     logger.info("saving results")
