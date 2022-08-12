@@ -4,35 +4,14 @@ input:
   folder: data
   fname: clean_transactions.csv
 output_folder: output
-# models: 
-# - rnn
-# - arima
-# - sarima
-models:
-  - dense
-  - cnn
-  - lstm
-  - arima 
-  - sarima
-aggregation: day # one of [None, 'hour','day','month'] If none, aggregation time is 15 minutes
-
+models: dense
+aggregation: day # one of [None, 'hour','day','month'] 
 train_date: '2018-08-01'
-  # year: 2018
-  # month: 8
-  # day: 1
-
-  # Seelct a number of stations to run simulation 
-number_of_stations: 1
-
-## CNN Settings 
-cnn:
-  steps_back: 14
-  steps_future: 7 
-  batch_size: 128
-
-# Estimation Type
-online: True
-static: True
-
+steps_back: 14
+forecast_window: 7 
+batch_size: 32
+online: False
+multioutput: True
 replace: False
-
+batch_size: 32
+stations: #If any given, multioutput model is turned off. 

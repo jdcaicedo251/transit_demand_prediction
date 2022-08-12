@@ -1,13 +1,8 @@
-
-from tabnanny import verbose
 import os
+
 import tensorflow as tf
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
-# import time
-
-from data import unnormalize_predict
 from utils import compile_and_fit
-from time_measure import TicToc
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -17,21 +12,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 class cnnClass():
-    def __init__(self, settings, station_name):
-        self.aggregation = settings['aggregation']
-        self.station_name = station_name
-        self.conv_widht = settings['cnn']['steps_back']
-
-        if self.aggregation == 'day':
-            self.forecast_window = 7
-        elif self.aggregation == 'hour':
-            self.forecast_window = 24
-        elif self.aggregation == 'month':
-            self.forecast_window = 12
-        elif self.aggregation == '15mins':
-            self.forecast_window = 8
-        else:
-            raise KeyError ('aggregation parameter is one of [day, hour, month, 15 mins]')
+    def __init__(self, settings):
+        self.forecast_window = settings['forecast_window']
+        self.conv_widht = settings['steps_back']
+        
 
     def fit(self, window,  patience = 2):
         num_features = len(window.label_columns)
@@ -46,20 +30,17 @@ class cnnClass():
         self.fitted_model = conv_model
     
     # @tf.function(experimental_relax_shapes=True)
-    def predict(self, window, train_mean, train_std, online = False):
-        t = TicToc()
+    def predict(self, window, online = False):
         model = self.fitted_model
         if online:
             for input, labels in window.test:
-                normalized_prediction = model(input)
-                prediction = unnormalize_predict(normalized_prediction, train_mean, train_std)
+                prediction = model(input)
 
                 #Debugging information
                 logger.debug("Input shape for dense model is {}".format(input.shape))
                 logger.debug("Output shape for dense model is {}".format(prediction.shape))
            
         else:
-            normalized_prediction = model.predict(window.test)
-            prediction = unnormalize_predict(normalized_prediction, train_mean, train_std)
-        self.run_time = t.tocvalue()
+            prediction = model.predict(window.test)
+
         return prediction

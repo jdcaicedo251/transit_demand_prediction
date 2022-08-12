@@ -14,8 +14,8 @@ def save_json(path, dictionary):
     a_file.close()
 
 def read_json(path):
-  with open(path) as f:
-    return json.load(f)
+    with open(path) as f:
+        return json.load(f)
 
 
 def delete_files_folder(directory):
@@ -38,16 +38,16 @@ def read_yaml(path):
 
 
 def compile_and_fit(model, window, patience=2):
-  early_stopping = tf.keras.callbacks.EarlyStopping(monitor = 'loss',
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor = 'loss',
                                                     patience=patience,
                                                     mode='min')
 
-  model.compile(loss=tf.losses.MeanSquaredError(),
+    model.compile(loss=tf.losses.MeanSquaredError(),
                 optimizer=tf.optimizers.Adam(),
                 metrics=[tf.metrics.MeanAbsoluteError()])
 
-  history = model.fit(window.train, epochs=30,
+    history = model.fit(window.train, epochs=100,
                     #   validation_data=window.val,
                       callbacks=[early_stopping],
                       verbose = False)
-  return history
+    return history
