@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 import pandas as pd
 import numpy as np
 import argparse
@@ -17,7 +18,10 @@ from data import train_test_data, read_settings, min_max, unnormalize_min_max, W
 from utils import save_json
 
 import logging
-logger = logging.getLogger()
+logging.basicConfig(
+    stream=sys.stdout, level=logging.INFO,
+    format='%(asctime)s %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
@@ -341,10 +345,17 @@ if __name__ == '__main__':
     exog_vars = list(set(train.columns[~train.columns.str.contains("\(")]))
     list_stations = list(train.columns[train.columns.str.contains("\(")])
     
+    logging.INFO("Model: {}".format(model))
+    logging.INFO("Aggregation: {}".format(aggregation))
+    logging.INFO("Training: {}".format(training))
+    logging.INFO("Output: {}".format(output))
+
     if multioutput:
         stations = list_stations
+        logging.INFO('Input Stations: {}'.format(len(stations)))
     else: 
         stations = settings['stations']
+        logging.INFO('Input Station: {}'.format(stations))
         
     results_path = path = os.path.join(output_folder,
                                        aggregation,
@@ -354,17 +365,21 @@ if __name__ == '__main__':
     
     create_path(results_path, replace = replace)
     
-    t = TicToc()
-    
+    time_= TicToc()
+
     if online: 
+        logging.INFO('Running in Online Mode')
+        time_.tic()
         result, e_time, s_time = online_estimation(model, stations, test_limit = test_limit)
-        
+        time_.toc("Model estimation and simulation in {}".format(time_.tocvalue()))
     else: 
+        logging.INFO('Running in Static Mode')
+        time_.tic()
         result, e_time, s_time = static_estimation(model, stations, test_limit = test_limit)
+        time_.toc("Model estimation and simulation in {}".format(time_.tocvalue()))
         
     #Save results
     for station, prediction in zip(stations, result):
-        print(station)
         p_dict = prediction_dict(station, prediction, e_time, s_time)
         path = os.path.join(results_path, station + '.json')
         save_json(path, p_dict)
