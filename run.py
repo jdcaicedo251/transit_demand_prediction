@@ -76,7 +76,9 @@ def prediction_dict(station, prediction, estimation_time, simulation_time):
     dict_ = {}
     dict_['name'] = station
     
-    if (type(estimation_time) == list) and (type(simulation_time) == list):
+    # if (type(estimation_time) == list) and (type(simulation_time) == list):
+    if online: 
+        print("I enter to this here because it's an online estimation")
         dict_['estimation_time'] = estimation_time.tolist()
         dict_['simulation_time'] = simulation_time.tolist()
         
