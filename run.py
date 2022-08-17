@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 import numpy as np
 import argparse
+from tqdm import tqdm
 import tensorflow as tf 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
@@ -78,7 +79,7 @@ def prediction_dict(station, prediction, estimation_time, simulation_time):
     
     # if (type(estimation_time) == list) and (type(simulation_time) == list):
     if online: 
-        print("I enter to this here because it's an online estimation")
+        logger.debug('Save results for online results')
         dict_['estimation_time'] = estimation_time.tolist()
         dict_['simulation_time'] = simulation_time.tolist()
         
@@ -125,7 +126,9 @@ def online_estimation(model, stations, test_limit=None):
     predictions = []
     estimation_time = []
     simulation_time = []
-    for i in df.index[train_index_: -label_width]:
+
+    date_iterator = df.index[train_index_: -label_width]
+    for i in tqdm(date_iterator):
         idx_online = train_index(df, i)
         df_online = df[:idx_online + 1]
         

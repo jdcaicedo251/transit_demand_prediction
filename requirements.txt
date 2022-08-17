@@ -3,3 +3,4 @@ tensorflow-cpu
 pmdarima
 holidays-co
 PyYAML
+tqdm
