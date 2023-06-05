@@ -10,4 +10,4 @@ Models Implemented
 
 We kindly request that users of this open-source platform cite this paper in any resulting publications or works that make use of the platform: 
 
-Juan D. Caicedo, Marta C. González, Joan L. Walker. "Open-Source Codebase Platform for Evaluating Short-Term Transit Demand Prediction Models across Dynamic and Stable Environments" (2023) (Working Paper) 
+Juan D. Caicedo, Marta C. González, Joan L. Walker. "Public Transit Demand Prediction During Highly Dynamic Conditions: A Meta-Analysis of State-of-the-Art Models and Open-Source Benchmarking Infrastructure" (2023) (Working Paper) 
