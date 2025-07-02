@@ -3,7 +3,7 @@
 *.pkl
 *.pyc
 
-data/
+#data/
 
 .DS_Store
 .ipynb_checkpoints
